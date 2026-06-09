@@ -1,0 +1,1230 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LogSense — Threat Intelligence</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@300;400;500;600;700&family=Syne:wght@400;600;700;800&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg:       #080b0f;
+  --bg2:      #0d1117;
+  --bg3:      #12181f;
+  --border:   #1e2a36;
+  --border2:  #243040;
+  --text:     #c9d8e8;
+  --muted:    #4a6075;
+  --accent:   #00d4ff;
+  --accent2:  #0099bb;
+  --danger:   #ff4560;
+  --danger2:  #cc2040;
+  --safe:     #00e5a0;
+  --safe2:    #00aa78;
+  --warn:     #ffb020;
+  --mono:     'JetBrains Mono', monospace;
+  --sans:     'Syne', sans-serif;
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--bg);
+  color: var(--text);
+  font-family: var(--mono);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* Subtle grid background */
+body::before {
+  content: '';
+  position: fixed;
+  inset: 0;
+  background-image:
+    linear-gradient(rgba(0,212,255,0.015) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(0,212,255,0.015) 1px, transparent 1px);
+  background-size: 40px 40px;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* ── Header ────────────────────────────────────────── */
+header {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 18px 28px;
+  border-bottom: 1px solid var(--border);
+  background: rgba(8,11,15,0.95);
+  backdrop-filter: blur(10px);
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+}
+
+.logo-icon {
+  width: 36px; height: 36px;
+  background: linear-gradient(135deg, var(--accent), var(--accent2));
+  border-radius: 8px;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 16px;
+}
+
+.logo-text {
+  font-family: var(--sans);
+  font-size: 1.3rem;
+  font-weight: 800;
+  letter-spacing: 3px;
+  color: #fff;
+}
+
+.logo-sub {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-top: 1px;
+}
+
+.header-right {
+  display: flex;
+  align-items: center;
+  gap: 20px;
+}
+
+.api-pill {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  border: 1px solid var(--border2);
+  background: var(--bg2);
+  font-size: 0.72rem;
+  letter-spacing: 1px;
+  color: var(--muted);
+  cursor: default;
+}
+
+.api-dot {
+  width: 7px; height: 7px;
+  border-radius: 50%;
+  background: var(--danger);
+  transition: background 0.3s;
+  animation: pulse 2s infinite;
+}
+
+.api-dot.online { background: var(--safe); }
+
+@keyframes pulse {
+  0%,100% { opacity: 1; }
+  50%      { opacity: 0.4; }
+}
+
+/* ── Layout ────────────────────────────────────────── */
+.layout {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  grid-template-columns: 280px 1fr;
+  grid-template-rows: auto 1fr;
+  min-height: calc(100vh - 73px);
+}
+
+/* ── Sidebar ───────────────────────────────────────── */
+.sidebar {
+  grid-row: 1 / 3;
+  border-right: 1px solid var(--border);
+  padding: 24px 0;
+  background: var(--bg2);
+}
+
+.sidebar-section {
+  padding: 0 20px;
+  margin-bottom: 28px;
+}
+
+.sidebar-label {
+  font-size: 0.62rem;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-bottom: 12px;
+  padding: 0 4px;
+}
+
+/* Stats cards */
+.stat-card {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 14px 16px;
+  margin-bottom: 8px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  transition: border-color 0.2s;
+}
+
+.stat-card:hover { border-color: var(--border2); }
+
+.stat-card .label {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.stat-card .value {
+  font-family: var(--sans);
+  font-size: 1.4rem;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.val-total   { color: var(--accent); }
+.val-anomaly { color: var(--danger); }
+.val-normal  { color: var(--safe); }
+.val-rate    { color: var(--warn); }
+.val-latency { color: var(--accent); }
+
+/* Attack type breakdown */
+.attack-bar {
+  margin-bottom: 8px;
+}
+
+.attack-bar-label {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--muted);
+  margin-bottom: 4px;
+}
+
+.attack-bar-track {
+  height: 3px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+}
+
+.attack-bar-fill {
+  height: 100%;
+  background: var(--danger);
+  border-radius: 2px;
+  transition: width 0.6s ease;
+}
+
+/* Nav tabs */
+.nav-tab {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 16px;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.78rem;
+  letter-spacing: 1px;
+  color: var(--muted);
+  transition: all 0.15s;
+  margin-bottom: 4px;
+  border: 1px solid transparent;
+}
+
+.nav-tab:hover { background: var(--bg3); color: var(--text); }
+
+.nav-tab.active {
+  background: rgba(0,212,255,0.07);
+  border-color: rgba(0,212,255,0.2);
+  color: var(--accent);
+}
+
+.nav-icon { font-size: 14px; width: 16px; text-align: center; }
+
+/* ── Main content ───────────────────────────────────── */
+.topbar {
+  border-bottom: 1px solid var(--border);
+  padding: 16px 28px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  background: rgba(8,11,15,0.8);
+}
+
+.page-title {
+  font-family: var(--sans);
+  font-size: 0.9rem;
+  font-weight: 600;
+  letter-spacing: 2px;
+  color: var(--text);
+}
+
+.topbar-actions { display: flex; gap: 10px; align-items: center; }
+
+.btn {
+  padding: 8px 18px;
+  border-radius: 6px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.75rem;
+  font-weight: 500;
+  cursor: pointer;
+  letter-spacing: 1px;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+
+.btn:hover { background: var(--border2); color: #fff; }
+
+.btn-primary {
+  background: var(--accent);
+  color: #000;
+  border-color: var(--accent);
+  font-weight: 600;
+}
+
+.btn-primary:hover { background: var(--accent2); border-color: var(--accent2); }
+
+.btn-danger {
+  background: rgba(255,69,96,0.1);
+  color: var(--danger);
+  border-color: rgba(255,69,96,0.3);
+}
+
+.btn-danger:hover { background: rgba(255,69,96,0.2); }
+
+.btn-stop {
+  background: var(--danger);
+  color: #fff;
+  border-color: var(--danger);
+  font-weight: 600;
+}
+
+.btn-stop:hover { background: var(--danger2); border-color: var(--danger2); }
+
+.main-content {
+  padding: 24px 28px;
+  overflow-y: auto;
+  max-height: calc(100vh - 73px - 57px);
+}
+
+/* ── Panels ─────────────────────────────────────────── */
+.panel { display: none; }
+.panel.active { display: block; }
+
+/* ── Manual Analyzer ────────────────────────────────── */
+.quick-tests {
+  margin-bottom: 20px;
+}
+
+.quick-label {
+  font-size: 0.65rem;
+  color: var(--muted);
+  letter-spacing: 2px;
+  margin-bottom: 10px;
+}
+
+.test-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 7px;
+}
+
+.chip {
+  padding: 5px 12px;
+  border-radius: 4px;
+  border: 1px solid var(--border2);
+  background: var(--bg3);
+  font-size: 0.7rem;
+  cursor: pointer;
+  letter-spacing: 0.5px;
+  color: var(--muted);
+  transition: all 0.15s;
+  font-family: var(--mono);
+}
+
+.chip:hover { color: var(--text); border-color: var(--border2); background: var(--bg2); }
+.chip.attack { color: #ff8099; border-color: rgba(255,69,96,0.25); }
+.chip.attack:hover { border-color: var(--danger); color: var(--danger); }
+.chip.normal-chip { color: #80ffc8; border-color: rgba(0,229,160,0.25); }
+.chip.normal-chip:hover { border-color: var(--safe); color: var(--safe); }
+
+/* Input area */
+.input-section {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.input-header {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.input-header span {
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+}
+
+textarea {
+  width: 100%;
+  background: transparent;
+  border: none;
+  color: var(--text);
+  font-family: var(--mono);
+  font-size: 0.85rem;
+  padding: 18px;
+  resize: none;
+  min-height: 90px;
+  line-height: 1.6;
+}
+
+textarea::placeholder { color: var(--muted); opacity: 0.6; }
+textarea:focus { outline: none; }
+
+.input-footer {
+  padding: 12px 18px;
+  border-top: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.input-hint {
+  font-size: 0.65rem;
+  color: var(--muted);
+}
+
+/* Result */
+.result-panel {
+  display: none;
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  animation: fadeUp 0.3s ease;
+}
+
+@keyframes fadeUp {
+  from { opacity:0; transform:translateY(8px); }
+  to   { opacity:1; transform:translateY(0); }
+}
+
+.result-panel.anomaly { border-color: rgba(255,69,96,0.4); }
+.result-panel.normal  { border-color: rgba(0,229,160,0.3); }
+
+.result-header {
+  padding: 20px 24px;
+  display: flex;
+  align-items: center;
+  gap: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.result-header.anomaly { background: rgba(255,69,96,0.05); }
+.result-header.normal  { background: rgba(0,229,160,0.05); }
+
+.verdict {
+  font-family: var(--sans);
+  font-size: 2rem;
+  font-weight: 800;
+  letter-spacing: 4px;
+}
+
+.verdict.anomaly { color: var(--danger); }
+.verdict.normal  { color: var(--safe); }
+
+.attack-tag {
+  padding: 4px 12px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+}
+
+.attack-tag.anomaly { background: rgba(255,69,96,0.15); color: var(--danger); border: 1px solid rgba(255,69,96,0.3); }
+.attack-tag.normal  { background: rgba(0,229,160,0.1);  color: var(--safe);   border: 1px solid rgba(0,229,160,0.2); }
+
+.result-body { padding: 20px 24px; }
+
+.result-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 16px;
+  margin-bottom: 18px;
+}
+
+.result-metric { }
+.result-metric .key {
+  font-size: 0.63rem;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 5px;
+}
+
+.result-metric .val {
+  font-family: var(--sans);
+  font-size: 1.2rem;
+  font-weight: 700;
+  color: var(--warn);
+}
+
+.conf-bar {
+  height: 4px;
+  background: var(--border);
+  border-radius: 2px;
+  overflow: hidden;
+  margin-bottom: 16px;
+}
+
+.conf-fill {
+  height: 100%;
+  border-radius: 2px;
+  transition: width 0.6s cubic-bezier(0.4,0,0.2,1);
+}
+
+.conf-fill.anomaly { background: linear-gradient(90deg, var(--danger2), var(--danger)); }
+.conf-fill.normal  { background: linear-gradient(90deg, var(--safe2),   var(--safe));   }
+
+.norm-log-box {
+  background: var(--bg3);
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  padding: 12px 16px;
+}
+
+.norm-log-box .key {
+  font-size: 0.63rem;
+  color: var(--muted);
+  letter-spacing: 1.5px;
+  margin-bottom: 6px;
+}
+
+.norm-log-box .val {
+  font-size: 0.78rem;
+  color: var(--muted);
+  word-break: break-all;
+  line-height: 1.5;
+}
+
+/* ── Live Feed ───────────────────────────────────────── */
+.feed-controls-bar {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 18px;
+  flex-wrap: wrap;
+}
+
+.speed-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 0.7rem;
+  color: var(--muted);
+}
+
+input[type=range] {
+  -webkit-appearance: none;
+  width: 100px;
+  height: 3px;
+  background: var(--border2);
+  border-radius: 2px;
+  cursor: pointer;
+}
+
+input[type=range]::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 12px; height: 12px;
+  background: var(--accent);
+  border-radius: 50%;
+}
+
+.feed-wrap {
+  background: var(--bg2);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+}
+
+.feed-head {
+  padding: 12px 18px;
+  border-bottom: 1px solid var(--border);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--muted);
+  letter-spacing: 1px;
+}
+
+.live-dot {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.live-dot::before {
+  content: '';
+  width: 6px; height: 6px;
+  background: var(--danger);
+  border-radius: 50%;
+  display: none;
+  animation: pulse 1s infinite;
+}
+
+.live-dot.on::before { display: inline-block; }
+
+#feed {
+  height: 520px;
+  overflow-y: auto;
+  padding: 8px;
+  scrollbar-width: thin;
+  scrollbar-color: var(--border) transparent;
+}
+
+#feed::-webkit-scrollbar { width: 4px; }
+#feed::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+
+.log-entry {
+  display: grid;
+  grid-template-columns: 70px 90px 130px 50px 1fr;
+  gap: 10px;
+  align-items: start;
+  padding: 8px 12px;
+  border-radius: 5px;
+  margin-bottom: 3px;
+  font-size: 0.74rem;
+  animation: entryIn 0.25s ease;
+  border-left: 2px solid transparent;
+}
+
+@keyframes entryIn {
+  from { opacity:0; transform:translateX(-6px); }
+  to   { opacity:1; transform:translateX(0); }
+}
+
+.log-entry.normal {
+  background: rgba(0,229,160,0.03);
+  border-left-color: rgba(0,229,160,0.25);
+}
+
+.log-entry.anomaly {
+  background: rgba(255,69,96,0.06);
+  border-left-color: var(--danger);
+  animation: entryIn 0.25s ease, flashEntry 0.4s ease;
+}
+
+@keyframes flashEntry {
+  0%   { background: rgba(255,69,96,0.18); }
+  100% { background: rgba(255,69,96,0.06); }
+}
+
+.e-ts     { color: var(--muted); font-size: 0.68rem; padding-top: 1px; }
+.e-badge  { text-align:center; padding: 2px 0; border-radius: 3px; font-weight:600; font-size:0.68rem; letter-spacing:0.5px; }
+.e-badge.anomaly { background:rgba(255,69,96,0.15); color:var(--danger); }
+.e-badge.normal  { background:rgba(0,229,160,0.1);  color:var(--safe); }
+.e-type   { color: var(--warn); font-size:0.68rem; padding-top:1px; }
+.e-conf   { color: var(--muted); font-size:0.68rem; padding-top:1px; text-align:right; }
+.e-text   { color: #5a7a90; word-break:break-all; line-height:1.4; }
+.e-text.anomaly { color: #cc8090; }
+
+/* ── Alert Popup ────────────────────────────────────── */
+#alert-popup {
+  display: none;
+  position: fixed;
+  top: 24px; right: 24px;
+  width: 360px;
+  background: var(--bg2);
+  border: 1px solid var(--danger);
+  border-radius: 12px;
+  padding: 20px 22px;
+  z-index: 9999;
+  box-shadow: 0 0 50px rgba(255,69,96,0.2), 0 20px 60px rgba(0,0,0,0.5);
+  animation: slideIn 0.35s cubic-bezier(0.34,1.56,0.64,1);
+}
+
+@keyframes slideIn {
+  from { transform:translateX(120px); opacity:0; }
+  to   { transform:translateX(0); opacity:1; }
+}
+
+.popup-top {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 12px;
+}
+
+.popup-title {
+  font-family: var(--sans);
+  font-size: 0.85rem;
+  font-weight: 700;
+  color: var(--danger);
+  letter-spacing: 2px;
+}
+
+.popup-close {
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 1rem;
+  line-height: 1;
+  transition: color 0.15s;
+}
+
+.popup-close:hover { color: var(--text); }
+
+.popup-type {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255,69,96,0.1);
+  border: 1px solid rgba(255,69,96,0.25);
+  color: var(--danger);
+  padding: 4px 10px;
+  border-radius: 4px;
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 1px;
+  margin-bottom: 10px;
+}
+
+.popup-log {
+  font-size: 0.73rem;
+  color: var(--muted);
+  word-break: break-all;
+  line-height: 1.5;
+  margin-bottom: 12px;
+  background: var(--bg3);
+  padding: 8px 12px;
+  border-radius: 5px;
+  border: 1px solid var(--border);
+}
+
+.popup-footer {
+  display: flex;
+  justify-content: space-between;
+  font-size: 0.68rem;
+  color: var(--muted);
+}
+
+.popup-footer span { color: var(--warn); }
+
+.popup-bar {
+  height: 2px;
+  background: var(--border);
+  border-radius: 1px;
+  margin-bottom: 14px;
+  overflow: hidden;
+}
+
+.popup-bar-fill {
+  height: 100%;
+  background: var(--danger);
+  border-radius: 1px;
+  width: 100%;
+  animation: shrinkBar linear forwards;
+}
+
+@keyframes shrinkBar {
+  from { width: 100%; }
+  to   { width: 0%; }
+}
+
+/* ── Scrollbar ─────────────────────────────────────── */
+.main-content::-webkit-scrollbar { width: 4px; }
+.main-content::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 2px; }
+</style>
+</head>
+<body>
+
+<!-- Header -->
+<header>
+  <div class="logo">
+    <div class="logo-icon">⚡</div>
+    <div>
+      <div class="logo-text">LOGSENSE</div>
+      <div class="logo-sub">FINE-TUNED DISTILBERT · LOG ANOMALY DETECTION</div>
+    </div>
+  </div>
+  <div class="header-right">
+    <div class="api-pill">
+      <div class="api-dot" id="api-dot"></div>
+      <span id="api-status">CONNECTING...</span>
+    </div>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar">
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">NAVIGATION</div>
+      <div class="nav-tab active" id="nav-manual" onclick="switchTab('manual')">
+        <span class="nav-icon">🔍</span> MANUAL ANALYZER
+      </div>
+      <div class="nav-tab" id="nav-live" onclick="switchTab('live')">
+        <span class="nav-icon">📡</span> LIVE FEED
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">SESSION STATS</div>
+      <div class="stat-card">
+        <div class="label">TOTAL ANALYZED</div>
+        <div class="value val-total" id="s-total">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">ANOMALIES</div>
+        <div class="value val-anomaly" id="s-anomaly">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">NORMAL</div>
+        <div class="value val-normal" id="s-normal">0</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">THREAT RATE</div>
+        <div class="value val-rate" id="s-rate">—</div>
+      </div>
+      <div class="stat-card">
+        <div class="label">AVG LATENCY</div>
+        <div class="value val-latency" id="s-latency">—</div>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-label">ATTACK BREAKDOWN</div>
+      <div id="attack-breakdown">
+        <div style="font-size:0.68rem;color:var(--muted)">No attacks detected yet.</div>
+      </div>
+    </div>
+
+  </aside>
+
+  <!-- Main -->
+  <div style="display:flex;flex-direction:column;overflow:hidden;">
+
+    <!-- Topbar -->
+    <div class="topbar">
+      <div class="page-title" id="page-title">MANUAL ANALYZER</div>
+      <div class="topbar-actions" id="topbar-actions">
+        <button class="btn" onclick="clearManual()">CLEAR</button>
+        <button class="btn btn-primary" onclick="analyzeManual()">ANALYZE ↵</button>
+      </div>
+    </div>
+
+    <!-- Content -->
+    <div class="main-content">
+
+      <!-- Manual Panel -->
+      <div class="panel active" id="panel-manual">
+
+        <div class="quick-tests">
+          <div class="quick-label">QUICK TEST — CLICK TO LOAD & ANALYZE</div>
+          <div class="test-chips">
+  <!-- High confidence attacks ~95-100% -->
+  <span class="chip attack" onclick="quickTest('sshd[3842]: Failed password for root from 185.220.101.45 port 54892 ssh2')"> Brute Force</span>
+  <span class="chip attack" onclick="quickTest('sudo: nobody : USER=root ; COMMAND=/bin/bash')">Priv Escalation</span>
+  <span class="chip attack" onclick="quickTest('kernel[0]: Out of memory: Kill process 9821 (postgres) score 950 or sacrifice child')">Kernel OOM</span>
+  <span class="chip attack" onclick="quickTest('FATAL 1117838570 2005.06.03 R02-M1-N0-C:J12-U11 RAS KERNEL FATAL node card memtest failed')"> HPC Fatal</span>
+  <span class="chip attack" onclick="quickTest('kernel[0]: DROP IN=eth0 SRC=192.168.1.100 DST=10.0.0.1 PROTO=TCP DPT=23')"> Port Scan</span>
+
+  <!-- Medium confidence attacks ~65-85% — interesting for demo -->
+  <span class="chip attack" onclick="quickTest('kernel[0]: Oops: 0002 [#1] SMP PTI')"> Kernel Oops</span>
+  <span class="chip attack" onclick="quickTest('sudo: www-data : USER=root ; COMMAND=/usr/bin/python3 /tmp/run.py')">Suspicious Sudo</span>
+  <span class="chip attack" onclick="quickTest('APPREAD 1117838600 2005.06.03 R04-M0-N3-C:J06-U01 RAS APP FATAL application terminated')">HPC App Fault</span>
+  <span class="chip attack" onclick="quickTest('kernel[0]: BUG: unable to handle kernel NULL pointer dereference at 0000000000000008')"> Kernel BUG</span>
+
+  <!-- Borderline cases — good for explaining model limitations -->
+  <span class="chip" style="color:#ffcc44;border-color:rgba(255,200,0,0.3)" onclick="quickTest('sshd[4821]: Accepted password for backup from 203.0.113.42 port 22 ssh2')"> Suspicious Login</span>
+  <span class="chip" style="color:#ffcc44;border-color:rgba(255,200,0,0.3)" onclick="quickTest('sudo: alice : USER=root ; COMMAND=/usr/bin/apt-get install nginx')"> Legit Sudo</span>
+  <span class="chip" style="color:#ffcc44;border-color:rgba(255,200,0,0.3)" onclick="quickTest('kernel[0]: Out of memory: oom_kill_process started for systemd')">Minor OOM</span>
+  <span class="chip" style="color:#ffcc44;border-color:rgba(255,200,0,0.3)" onclick="quickTest('cron[9999]: (root) CMD (/tmp/cleanup.sh)')">Cron /tmp</span>
+
+  <!-- Obvious normal ~0-5% -->
+  <span class="chip normal-chip" onclick="quickTest('sshd[5678]: Accepted publickey for alice from 10.0.0.5 port 22 ssh2')">Normal Login</span>
+  <span class="chip normal-chip" onclick="quickTest('cron[1234]: (root) CMD (/usr/bin/apt-get update)')">Cron Job</span>
+  <span class="chip normal-chip" onclick="quickTest('- 1117838580 2005.06.03 R02-M1-N0-C:J12-U11 RAS KERNEL INFO starting kernel')">BGL Normal</span>
+  <span class="chip normal-chip" onclick="quickTest('systemd[1]: Started Session 42 of user alice.')"> Systemd</span>
+</div>
+        </div>
+
+        <div class="input-section">
+          <div class="input-header">
+            <span>LOG INPUT</span>
+            <span style="color:var(--accent);font-size:0.65rem">CTRL+ENTER TO ANALYZE</span>
+          </div>
+          <textarea id="log-input" rows="3"
+            placeholder="Paste any system log line here...&#10;&#10;e.g. sshd[1234]: Failed password for root from 192.168.1.5 port 22 ssh2"></textarea>
+          <div class="input-footer">
+            <span class="input-hint">Supports: SSH · Kernel · Sudo · BGL · Syslog · Custom</span>
+          </div>
+        </div>
+
+        <div class="result-panel" id="result-panel">
+          <div class="result-header" id="result-header">
+            <div class="verdict" id="result-verdict">—</div>
+            <div class="attack-tag" id="result-tag">—</div>
+          </div>
+          <div class="result-body">
+            <div class="conf-bar">
+              <div class="conf-fill" id="conf-fill" style="width:0%"></div>
+            </div>
+            <div class="result-grid">
+              <div class="result-metric">
+                <div class="key">CONFIDENCE</div>
+                <div class="val" id="r-conf">—</div>
+              </div>
+              <div class="result-metric">
+                <div class="key">LATENCY</div>
+                <div class="val" id="r-latency">—</div>
+              </div>
+              <div class="result-metric">
+                <div class="key">ATTACK TYPE</div>
+                <div class="val" style="font-size:0.9rem" id="r-type">—</div>
+              </div>
+            </div>
+            <div class="norm-log-box">
+              <div class="key">NORMALIZED LOG</div>
+              <div class="val" id="r-norm">—</div>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Live Feed Panel -->
+      <div class="panel" id="panel-live">
+
+        <div class="feed-controls-bar">
+          <button class="btn btn-primary" id="feed-btn" onclick="toggleFeed()">▶ START LIVE FEED</button>
+          <button class="btn" onclick="clearFeed()">CLEAR</button>
+          <div class="speed-row">
+            INTERVAL
+            <input type="range" id="speed-slider" min="600" max="3000" value="1200" step="100" oninput="updateSpeed()">
+            <span id="speed-label">1.2s</span>
+          </div>
+        </div>
+
+        <div class="feed-wrap">
+          <div class="feed-head">
+            <span class="live-dot" id="live-indicator">STREAM</span>
+            <span id="feed-count">0 entries</span>
+          </div>
+          <div id="feed"></div>
+        </div>
+
+      </div>
+
+    </div><!-- /main-content -->
+  </div><!-- /main col -->
+</div><!-- /layout -->
+
+<!-- Alert Popup -->
+<div id="alert-popup">
+  <div class="popup-top">
+    <div class="popup-title">⚠ THREAT DETECTED</div>
+    <span class="popup-close" onclick="closeAlert()">✕</span>
+  </div>
+  <div class="popup-bar"><div class="popup-bar-fill" id="popup-bar-fill"></div></div>
+  <div class="popup-type" id="popup-type">—</div>
+  <div class="popup-log"  id="popup-log">—</div>
+  <div class="popup-footer">
+    <span>CONFIDENCE</span><span id="popup-conf">—</span>
+    <span style="margin-left:16px">LATENCY</span><span id="popup-lat">—</span>
+  </div>
+</div>
+
+<script>
+const API = "http://localhost:8000";
+
+// ── State ──────────────────────────────────────────────────────
+let stats = { total:0, anomaly:0, normal:0, latencies:[], attacks:{} };
+let feedOn = false, feedTimer = null, feedSpeed = 1200;
+let alertTimer = null, feedCount = 0;
+
+// ── Log Pool ───────────────────────────────────────────────────
+const NORMALS = [
+  "sshd[5678]: Accepted publickey for alice from 10.0.0.5 port 22 ssh2",
+  "sshd[5679]: Accepted publickey for bob from 10.0.1.2 port 22 ssh2",
+  "sshd[5680]: Accepted password for carol from 192.168.0.10 port 22 ssh2",
+  "cron[1234]: (root) CMD (/usr/bin/apt-get update)",
+  "cron[5432]: (deploy) CMD (/usr/bin/backup.sh)",
+  "systemd[1]: Started Session 42 of user alice.",
+  "systemd[1]: Started Daily apt download activities.",
+  "systemd[1]: Reached target Multi-User System.",
+  "kernel[0]: eth0: renamed from veth3a2b1c",
+  "- 1117838580 2005.06.03 R02-M1-N0-C:J12-U11 RAS KERNEL INFO starting kernel",
+  "- 1117838590 2005.06.03 R04-M0-N3-C:J06-U01 RAS APP INFO application started",
+  "sshd[5681]: Accepted password for deploy from 10.0.2.5 port 22 ssh2",
+];
+
+const ATTACKS = [
+  "sshd[3842]: Failed password for root from 185.220.101.45 port 54892 ssh2",
+  "sshd[3843]: Failed password for invalid user admin from 45.33.32.156 port 22",
+  "sshd[3844]: Failed password for invalid user ubuntu from 23.129.64.190 port 22",
+  "sudo: bob : USER=root ; COMMAND=/bin/bash",
+  "sudo: www-data : USER=root ; COMMAND=/usr/bin/python3 /tmp/exploit.py",
+  "su: FAILED SU (to root) alice on /dev/pts/0",
+  "kernel[0]: Out of memory: Kill process 9821 (postgres) score 950 or sacrifice child",
+  "kernel[0]: segfault at 0x00007f8b4c000000 ip 0x00007f8b4c0001a0 error 6",
+  "kernel[0]: BUG: unable to handle kernel NULL pointer dereference",
+  "kernel[0]: DROP IN=eth0 SRC=192.168.1.100 DST=10.0.0.1 PROTO=TCP DPT=23",
+  "FATAL 1117838570 2005.06.03 R02-M1-N0-C:J12-U11 RAS KERNEL FATAL memtest failed",
+  "sudo: nobody : USER=root ; COMMAND=/bin/bash",
+];
+
+// 3 normals per 1 attack
+const WEIGHTED = [...NORMALS,...NORMALS,...NORMALS,...ATTACKS];
+
+// ── API calls ──────────────────────────────────────────────────
+async function callPredict(line) {
+  const r = await fetch(`${API}/predict`, {
+    method:"POST",
+    headers:{"Content-Type":"application/json"},
+    body: JSON.stringify({log_line: line})
+  });
+  if (!r.ok) throw new Error(`HTTP ${r.status}`);
+  return r.json();
+}
+
+// ── Health ─────────────────────────────────────────────────────
+async function checkHealth() {
+  const dot    = document.getElementById("api-dot");
+  const status = document.getElementById("api-status");
+  try {
+    const r = await fetch(`${API}/health`, {signal:AbortSignal.timeout(2000)});
+    if (r.ok) {
+      dot.classList.add("online");
+      status.textContent = "API ONLINE";
+    } else throw new Error();
+  } catch {
+    dot.classList.remove("online");
+    status.textContent = "API OFFLINE";
+  }
+}
+
+// ── Stats ──────────────────────────────────────────────────────
+function recordResult(result) {
+  stats.total++;
+  if (result.label === "ANOMALY") {
+    stats.anomaly++;
+    const t = result.attack_type || "Anomaly";
+    stats.attacks[t] = (stats.attacks[t] || 0) + 1;
+  } else {
+    stats.normal++;
+  }
+  stats.latencies.push(result.latency_ms);
+  if (stats.latencies.length > 100) stats.latencies.shift();
+
+  const avg = stats.latencies.reduce((a,b)=>a+b,0) / stats.latencies.length;
+  const rate = stats.total ? (stats.anomaly/stats.total*100).toFixed(1)+"%" : "—";
+
+  document.getElementById("s-total").textContent   = stats.total;
+  document.getElementById("s-anomaly").textContent = stats.anomaly;
+  document.getElementById("s-normal").textContent  = stats.normal;
+  document.getElementById("s-rate").textContent    = rate;
+  document.getElementById("s-latency").textContent = avg.toFixed(0)+"ms";
+
+  renderBreakdown();
+}
+
+function renderBreakdown() {
+  const el    = document.getElementById("attack-breakdown");
+  const total = Object.values(stats.attacks).reduce((a,b)=>a+b,0);
+  if (total === 0) {
+    el.innerHTML = '<div style="font-size:0.68rem;color:var(--muted)">No attacks detected yet.</div>';
+    return;
+  }
+  el.innerHTML = Object.entries(stats.attacks)
+    .sort((a,b)=>b[1]-a[1])
+    .map(([type, count]) => {
+      const pct = Math.round(count/total*100);
+      return `
+        <div class="attack-bar">
+          <div class="attack-bar-label">
+            <span>${type}</span><span>${count}</span>
+          </div>
+          <div class="attack-bar-track">
+            <div class="attack-bar-fill" style="width:${pct}%"></div>
+          </div>
+        </div>`;
+    }).join("");
+}
+
+// ── Manual Analyzer ────────────────────────────────────────────
+function quickTest(log) {
+  document.getElementById("log-input").value = log;
+  analyzeManual();
+}
+
+function clearManual() {
+  document.getElementById("log-input").value = "";
+  document.getElementById("result-panel").style.display = "none";
+}
+
+async function analyzeManual() {
+  const log = document.getElementById("log-input").value.trim();
+  if (!log) return;
+
+  const analyzeBtn = document.querySelector("#topbar-actions .btn-primary");
+  analyzeBtn.textContent = "ANALYZING...";
+  analyzeBtn.disabled = true;
+
+  try {
+    const result = await callPredict(log);
+    showResult(result);
+    recordResult(result);
+  } catch(e) {
+    alert("Cannot reach API.\n\nRun in terminal:\n  uvicorn api:app --reload --port 8000");
+  } finally {
+    analyzeBtn.textContent = "ANALYZE ↵";
+    analyzeBtn.disabled = false;
+  }
+}
+
+function showResult(result) {
+  const panel  = document.getElementById("result-panel");
+  const header = document.getElementById("result-header");
+  const verdict= document.getElementById("result-verdict");
+  const tag    = document.getElementById("result-tag");
+  const fill   = document.getElementById("conf-fill");
+  const cls    = result.label === "ANOMALY" ? "anomaly" : "normal";
+
+  panel.style.display  = "block";
+  panel.className      = `result-panel ${cls}`;
+  header.className     = `result-header ${cls}`;
+  verdict.textContent  = result.label;
+  verdict.className    = `verdict ${cls}`;
+  tag.textContent      = result.attack_type || result.label;
+  tag.className        = `attack-tag ${cls}`;
+
+  fill.style.width     = `${(result.confidence*100).toFixed(1)}%`;
+  fill.className       = `conf-fill ${cls}`;
+
+  document.getElementById("r-conf").textContent    = `${(result.confidence*100).toFixed(1)}%`;
+  document.getElementById("r-latency").textContent = `${result.latency_ms}ms`;
+  document.getElementById("r-type").textContent    = result.attack_type || "—";
+  document.getElementById("r-norm").textContent    = result.normalized_log;
+}
+
+// ── Live Feed ──────────────────────────────────────────────────
+function toggleFeed() {
+  const btn = document.getElementById("feed-btn");
+  const ind = document.getElementById("live-indicator");
+  if (feedOn) {
+    clearInterval(feedTimer);
+    feedOn = false;
+    btn.textContent = "▶ START LIVE FEED";
+    btn.className   = "btn btn-primary";
+    ind.classList.remove("on");
+  } else {
+    feedOn = true;
+    btn.textContent = "■ STOP";
+    btn.className   = "btn btn-stop";
+    ind.classList.add("on");
+    tick();
+    feedTimer = setInterval(tick, feedSpeed);
+  }
+}
+
+async function tick() {
+  const log = WEIGHTED[Math.floor(Math.random()*WEIGHTED.length)];
+  try {
+    const result = await callPredict(log);
+    addEntry(log, result);
+    recordResult(result);
+    if (result.label === "ANOMALY") showAlert(log, result);
+  } catch(e) { /* silently skip on connection error */ }
+}
+
+function addEntry(log, result) {
+  const feed = document.getElementById("feed");
+  const cls  = result.label === "ANOMALY" ? "anomaly" : "normal";
+  const ts   = new Date().toLocaleTimeString("en-GB");
+  feedCount++;
+  document.getElementById("feed-count").textContent = `${feedCount} entries`;
+
+  const div = document.createElement("div");
+  div.className = `log-entry ${cls}`;
+  div.innerHTML = `
+    <span class="e-ts">${ts}</span>
+    <span class="e-badge ${cls}">${result.label}</span>
+    <span class="e-type">${result.attack_type||""}</span>
+    <span class="e-conf">${(result.confidence*100).toFixed(0)}%</span>
+    <span class="e-text ${cls}">${log.substring(0,95)}</span>
+  `;
+  feed.insertBefore(div, feed.firstChild);
+  while (feed.children.length > 150) feed.removeChild(feed.lastChild);
+}
+
+function clearFeed() {
+  document.getElementById("feed").innerHTML = "";
+  feedCount = 0;
+  document.getElementById("feed-count").textContent = "0 entries";
+}
+
+function updateSpeed() {
+  feedSpeed = parseInt(document.getElementById("speed-slider").value);
+  document.getElementById("speed-label").textContent = `${(feedSpeed/1000).toFixed(1)}s`;
+  if (feedOn) { clearInterval(feedTimer); feedTimer = setInterval(tick, feedSpeed); }
+}
+
+// ── Alert Popup ────────────────────────────────────────────────
+function showAlert(log, result) {
+  const DURATION = 5000;
+  document.getElementById("popup-type").textContent = `⚠ ${result.attack_type || "Unknown"}`;
+  document.getElementById("popup-log").textContent  = log.substring(0,140);
+  document.getElementById("popup-conf").textContent = `${(result.confidence*100).toFixed(1)}%`;
+  document.getElementById("popup-lat").textContent  = `${result.latency_ms}ms`;
+
+  const fill = document.getElementById("popup-bar-fill");
+  fill.style.animation = "none";
+  fill.offsetHeight; // reflow
+  fill.style.animation = `shrinkBar ${DURATION}ms linear forwards`;
+
+  document.getElementById("alert-popup").style.display = "block";
+  if (alertTimer) clearTimeout(alertTimer);
+  alertTimer = setTimeout(closeAlert, DURATION);
+}
+
+function closeAlert() {
+  document.getElementById("alert-popup").style.display = "none";
+}
+
+// ── Tab switch ─────────────────────────────────────────────────
+function switchTab(name) {
+  document.getElementById("panel-manual").classList.toggle("active", name==="manual");
+  document.getElementById("panel-live").classList.toggle("active",   name==="live");
+  document.getElementById("nav-manual").classList.toggle("active",   name==="manual");
+  document.getElementById("nav-live").classList.toggle("active",     name==="live");
+  document.getElementById("page-title").textContent = name==="manual" ? "MANUAL ANALYZER" : "LIVE FEED";
+  document.getElementById("topbar-actions").innerHTML = name==="manual"
+    ? `<button class="btn" onclick="clearManual()">CLEAR</button>
+       <button class="btn btn-primary" onclick="analyzeManual()">ANALYZE ↵</button>`
+    : `<button class="btn" onclick="clearFeed()">CLEAR FEED</button>`;
+}
+
+// ── Init ───────────────────────────────────────────────────────
+checkHealth();
+setInterval(checkHealth, 5000);
+
+document.getElementById("log-input").addEventListener("keydown", e => {
+  if (e.ctrlKey && e.key === "Enter") analyzeManual();
+});
+</script>
+</body>
+</html>
