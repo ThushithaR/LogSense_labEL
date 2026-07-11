@@ -1110,7 +1110,7 @@ async function addLogRow(src, msg, label, confidence, attack_type, latencyMs, ra
       <div style="font-size:10px;color:var(--muted);font-family:var(--mono);text-align:right">${confPct}%</div>
       <div class="conf-bar-wrap"><div class="conf-bar" style="width:${confPct}%;background:${barColor}"></div></div>
     </div>
-    <div style="font-size:10px;color:var(--amber);font-family:var(--mono);display:flex;align-items:center;padding:0 4px">${attack_type||''}</div>
+    <div style="font-size:10px;color:var(--amber);font-family:var(--mono);display:flex;align-items:center;padding:0 4px">${isAnom ? (attack_type||'') : ''}</div>
     <div class="row-expand">›</div>
   `;
 
@@ -1149,14 +1149,7 @@ function toggleStream() {
     btn.className = 'btn danger';
     dot.classList.add('active');
     sseConn = new EventSource(API_BASE + '/stream');
-    sseConn.onmessage = e => {
-      try {
-        const d = JSON.parse(e.data);
-        const src = extractSrc(d.raw);
-        const msg = d.raw.replace(/^(\S+\s+\d+\s+[\d:]+\s+\S+\s+)/,'');
-        addLogRow(src, msg, d.label, d.confidence, d.attack_type, d.latency_ms, d.raw);
-      } catch {}
-    };
+    sseConn.onmessage=e=>{try{const d=JSON.parse(e.data);const src=d.src||extractSrc(d.raw);const msg=d.msg||d.raw;addLogRow(src,msg,d.label,d.confidence,d.attack_type,d.latency_ms,d.raw);}catch{}};
     sseConn.onerror = () => {
       if (sseConn) { sseConn.close(); sseConn = null; }
       const speed = parseInt(document.getElementById('speedSelect').value) || 1000;
